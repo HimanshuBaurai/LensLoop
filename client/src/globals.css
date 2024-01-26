@@ -280,3 +280,6 @@
         @apply flex gap-4 items-center justify-start hover:bg-transparent hover:text-white !important;
     }
 }
+
+/* it helps in avoiding written code again and again, and also helps in avoiding the use of !important in tailwind classes. */
+/* //when we initialized shadCn our file got over-writtens, so keep in mind to get it back  */
