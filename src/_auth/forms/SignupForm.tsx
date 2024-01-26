@@ -17,6 +17,7 @@ import { SignupValidation } from "@/lib/validation"//inorder to increase modular
 import { z } from "zod"//zod is a library that helps us to validate our form, uses regex under the hood to validate the form data
 import Loader from "@/components/shared/Loader"
 import { Link } from "react-router-dom"
+import { createUserAccount } from "@/lib/appwrite/api"
 
 
 const SignupForm = () => {
@@ -39,7 +40,8 @@ const SignupForm = () => {
     // ✅ This will be type-safe and validated.
     console.log(values)
 
-    // const newUser = await careteUserAccount(values);
+    const newUser = await createUserAccount(values);
+    console.log(newUser);
   }
 
 
