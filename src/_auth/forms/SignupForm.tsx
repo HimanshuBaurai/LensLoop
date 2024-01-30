@@ -1,29 +1,35 @@
-import { zodResolver } from "@hookform/resolvers/zod"//this is a library that helps us to validate our form, uses regex under the hood to validate the form data
-import { useForm } from "react-hook-form"//this is a library that helps us to create forms in react
+import * as z from "zod";
+import { useForm } from "react-hook-form";
+import { Link, useNavigate } from "react-router-dom";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import Loader from "@/components/shared/Loader";
+import { useToast } from "@/components/ui/use-toast";
 
-import { SignupValidation } from "@/lib/validation"//inorder to increase modularity we have created a validation.ts file inside lib folder, and we have defined our validation schema there
-import { z } from "zod"//zod is a library that helps us to validate our form, uses regex under the hood to validate the form data
-import Loader from "@/components/shared/Loader"
-import { Link } from "react-router-dom"
-import { createUserAccount } from "@/lib/appwrite/api"
-
+import {
+  useCreateUserAccount,
+  useSignInAccount,
+} from "@/lib/react-query/queries";
+import { SignupValidation } from "@/lib/validation";
+import { useUserContext } from "@/context/AuthContext";
 
 const SignupForm = () => {
-  const isLoading = false;//this will be changed to true when the form is being submitted
+  // Hooks and context
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { checkAuthUser, isLoading: isUserLoading } = useUserContext();
 
-  // 1. Define your form.
+  // Form setup with validation
   const form = useForm<z.infer<typeof SignupValidation>>({
     resolver: zodResolver(SignupValidation),
     defaultValues: {
@@ -32,41 +38,77 @@ const SignupForm = () => {
       email: "",
       password: "",
     },
-  })
+  });
 
-  // 2. Define a submit handler.
-  async function onSubmit(values: z.infer<typeof SignupValidation>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    console.log(values)
+  // Queries for creating and signing in user
+  const { mutateAsync: createUserAccount, isPending: isCreatingAccount } =
+    useCreateUserAccount();
+  const { mutateAsync: signInAccount, isPending: isSigningInUser } =
+    useSignInAccount();
 
-    const newUser = await createUserAccount(values);
-    console.log(newUser);
-  }
+  // Signup handler
+  const handleSignup = async (user: z.infer<typeof SignupValidation>) => {
+    try {
+      // Create a new user account
+      const newUser = await createUserAccount(user);
 
+      if (!newUser) {
+        toast({ title: "Sign up failed. Please try again." });
+        return;
+      }
+
+      // Sign in the newly created user
+      const session = await signInAccount({
+        email: user.email,
+        password: user.password,
+      });
+
+      if (!session) {
+        toast({ title: "Something went wrong. Please log in to your new account." });
+        navigate("/sign-in");
+        return;
+      }
+
+      // Check authentication status for the new user
+      const isLoggedIn = await checkAuthUser();
+
+      if (isLoggedIn) {
+        // Reset the form and navigate to the home page
+        form.reset();
+        navigate("/");
+      } else {
+        toast({ title: "Login failed. Please try again." });
+        return;
+      }
+    } catch (error) {
+      console.error({ error });
+    }
+  };
 
   return (
     <Form {...form}>
-      {/* upper portion having lensloop name and logo */}
-      <div className="sm:420 flex-center flex-col">
-        <img src="/assets/images/logo.svg" />
+      <div className="sm:w-420 flex-center flex-col">
+        <img src="/assets/images/logo.svg" alt="logo" />
 
         <h2 className="h3-bold md:h2-bold pt-5 sm:pt-12">
           Create a new account
         </h2>
         <p className="text-light-3 small-medium md:base-regular mt-2">
-          To use LensLoop, please enter you details
+          To use LensLoop, please enter your details
         </p>
 
-        {/* lower portion having form */}
-        <form onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-5 w-full mt-4">
+        {/* Signup form */}
+        <form
+          onSubmit={form.handleSubmit(handleSignup)}
+          className="flex flex-col gap-5 w-full mt-4"
+        >
+          {/* Form fields for name, username, email, and password */}
           <FormField
             control={form.control}
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Name</FormLabel>
+                <FormLabel className="shad-form_label">Name</FormLabel>
                 <FormControl>
                   <Input type="text" className="shad-input" {...field} />
                 </FormControl>
@@ -74,12 +116,14 @@ const SignupForm = () => {
               </FormItem>
             )}
           />
+
+          {/* Similar form fields for username, email, and password */}
           <FormField
             control={form.control}
             name="username"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Username</FormLabel>
+                <FormLabel className="shad-form_label">Username</FormLabel>
                 <FormControl>
                   <Input type="text" className="shad-input" {...field} />
                 </FormControl>
@@ -92,7 +136,7 @@ const SignupForm = () => {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel className="shad-form_label">Email</FormLabel>
                 <FormControl>
                   <Input type="email" className="shad-input" {...field} />
                 </FormControl>
@@ -105,7 +149,7 @@ const SignupForm = () => {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel className="shad-form_label">Password</FormLabel>
                 <FormControl>
                   <Input type="password" className="shad-input" {...field} />
                 </FormControl>
@@ -113,25 +157,33 @@ const SignupForm = () => {
               </FormItem>
             )}
           />
+          {/* ... */}
+
+          {/* Submit button with loading state */}
           <Button type="submit" className="shad-button_primary">
-            {isLoading ? (
+            {isCreatingAccount || isSigningInUser || isUserLoading ? (
               <div className="flex-center gap-2">
                 <Loader /> Loading...
               </div>
-            ) : "Sign up"}
+            ) : (
+              "Sign Up"
+            )}
           </Button>
-          <p className="text-small-regular text-light-2 text-center">
-            Already have an account?{" "}
-            <Link to='/sign-in'>
-              <span className="text-primary-500 text-small-semibold ml-1">Log in</span>
+
+          {/* Link to log in if already have an account */}
+          <p className="text-small-regular text-light-2 text-center mt-2">
+            Already have an account?
+            <Link
+              to="/sign-in"
+              className="text-primary-500 text-small-semibold ml-1"
+            >
+              Log in
             </Link>
           </p>
         </form>
       </div>
     </Form>
-  )
-}
+  );
+};
 
-export default SignupForm
-
-//used shadCn form --> https://ui.shadcn.com/docs/components/form
+export default SignupForm;
