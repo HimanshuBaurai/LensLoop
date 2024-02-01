@@ -1,8 +1,8 @@
 import {
-    useQuery,// useQuery is a React hook that fetches data from a query and returns that data to your UI.
-    useMutation,// useMutation is a React hook that fetches data from a mutation and returns that data to your UI.
-    useQueryClient,// useQueryClient is a React hook that gives you access to the queryClient instance.
-    useInfiniteQuery,// useInfiniteQuery is a React hook that fetches data from a query and returns that data to your UI.
+    useQuery,
+    useMutation,
+    useQueryClient,
+    useInfiniteQuery,
 } from "@tanstack/react-query";
 
 import { QUERY_KEYS } from "@/lib/react-query/queryKeys";
@@ -58,17 +58,18 @@ export const useSignOutAccount = () => {
 export const useGetPosts = () => {
     return useInfiniteQuery({
         queryKey: [QUERY_KEYS.GET_INFINITE_POSTS],
-        queryFn: getInfinitePosts,
-        getNextPageParam: (lastPage) => {
+        queryFn: getInfinitePosts as any,
+        getNextPageParam: (lastPage: any) => {
             // If there's no data, there are no more pages.
             if (lastPage && lastPage.documents.length === 0) {
                 return null;
             }
 
             // Use the $id of the last document as the cursor.
-            const lastId = lastPage.documents[lastPage?.documents.length - 1].$id;
+            const lastId = lastPage.documents[lastPage.documents.length - 1].$id;
             return lastId;
         },
+        initialPageParam: null, // Add this line
     });
 };
 
